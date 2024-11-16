@@ -256,10 +256,11 @@
       const chatMessages = document.getElementById("chat-messages");
 
       // Handle receiving messages
-      socket.on("msg", (msg) => {
+      socket.on("msg", async (msg) => {
+        const ip = await getIP();
         const messageDiv = document.createElement("div");
         messageDiv.className = "alert alert-primary fade-in mb-2";
-        messageDiv.textContent = msg;
+        messageDiv.textContent = `${ip}: ${msg}`;
         chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
       });
@@ -272,16 +273,18 @@
         }
       });
 
+      // Send message function
       function sendMessage() {
         const userMsg = msgInp.value.trim();
         if (userMsg) {
-          socket.emit("msg", userMsg);
-          msgInp.value = "";
-          msgInp.focus();
+          socket.emit("msg", userMsg); // Emit message
+          msgInp.value = ""; // Clear input field
+          msgInp.focus(); // Refocus on input field
         }
       }
+      // Fetching user IP address
       function getIP() {
-        fetch("https://api.ipify.org?format=json")
+        return fetch("https://api.ipify.org?format=json")
           .then((response) => response.json())
           .then((data) => {
             console.log("Your IP address is: " + data.ip);
