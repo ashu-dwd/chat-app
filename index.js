@@ -15,7 +15,7 @@ io.on("connection", (socket) => {
   });
 });
 
-app.use(express.static("./public"));
+res.sendFile(__dirname + "/public/index.html");
 
 app.get("/", (req, res) => {
   res.render("index");
