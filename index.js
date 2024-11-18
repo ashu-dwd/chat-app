@@ -9,16 +9,31 @@ const io = new Server(server);
 
 // socket.io
 io.on("connection", (socket) => {
+  console.log("A user connected");
+
   socket.on("msg", (msg) => {
-    console.log(`A new user has sent msg: ${msg}`);
-    io.emit("msg", msg);
+    console.log(`Message received: ${msg}`);
+    io.emit("msg", msg); // Broadcast the message to all connected clients
+  });
+
+  socket.on("disconnect", () => {
+    console.log("A user disconnected");
   });
 });
 
-res.sendFile(__dirname + "/public/index.html");
+// Set EJS as the view engine
+app.set("view engine", "ejs");
 
+// Define the home route
 app.get("/", (req, res) => {
   res.render("index");
 });
 
-server.listen(port, () => console.log(`Server started at port ${port}`));
+// Start the server
+server.listen(port, (err) => {
+  if (err) {
+    console.error("Error starting server:", err);
+  } else {
+    console.log(`Server running on http://localhost:${port}`);
+  }
+});
