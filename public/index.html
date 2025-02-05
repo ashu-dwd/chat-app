@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Modern Chat</title>
+    <title>Study Room</title>
     <style>
       * {
         margin: 0;
@@ -83,8 +83,8 @@
         padding: 12px 16px;
         border-radius: 15px;
         position: relative;
-        word-wrap: break-word;
-        white-space: pre-wrap;
+        word-wrap: break-word; /* Ensures the text wraps if it's too long */
+        white-space: normal; /* Prevents the text from going on a single line */
       }
 
       .sent .message-content {
@@ -100,7 +100,7 @@
       }
 
       .message-info {
-        font-size: 1.25rem;
+        font-size: 0.75rem;
         margin-top: 5px;
         opacity: 0.7;
         color: #666;
@@ -187,6 +187,16 @@
           padding-bottom: max(15px, env(safe-area-inset-bottom));
         }
       }
+      @media (max-width: 768px) {
+        .message-bubble {
+          max-width: 80%; /* Adjust the message bubble width */
+        }
+
+        .message-content {
+          padding: 10px 14px; /* Adjust padding for mobile view */
+          font-size: 14px; /* Reduce font size for better readability */
+        }
+      }
     </style>
   </head>
   <body>
@@ -214,10 +224,10 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
       const socket = io();
-      let username = "";
-      let notificationPermission = false;
 
-      // Request notification permission
+      let notificationPermission = false;
+      let username = "Anonymous"; // Default to Anonymous
+
       async function requestNotificationPermission() {
         if ("Notification" in window) {
           const permission = await Notification.requestPermission();
@@ -225,7 +235,6 @@
         }
       }
 
-      // Show notification
       function showNotification(message, sender) {
         if (notificationPermission && document.hidden) {
           const notification = new Notification("New Message from " + sender, {
@@ -240,17 +249,57 @@
       }
 
       window.onload = async () => {
-        username = prompt("Please enter your name:") || "Anonymous";
-        document.getElementById(
-          "user-welcome"
-        ).textContent = `Welcome, ${username}`;
-        socket.emit("setUsername", username);
-        await requestNotificationPermission();
+        try {
+          // Retrieve username from localStorage, or set a prompt to input username if not found
+          if (localStorage.getItem("username")) {
+            username = localStorage.getItem("username");
+          } else {
+            username = prompt("Please enter your name:") || "Anonymous";
+            localStorage.setItem("username", username);
+          }
+
+          // Update UI with the username
+          document.getElementById(
+            "user-welcome"
+          ).textContent = `Welcome, ${username}`;
+          socket.emit("setUsername", username);
+
+          await requestNotificationPermission();
+        } catch (error) {
+          console.error(
+            "Error fetching username from localStorage, using 'Anonymous'.",
+            error
+          );
+          username = "Anonymous"; // Fallback to Anonymous in case of error
+        }
       };
 
       const messageInput = document.getElementById("message-input");
       const sendButton = document.getElementById("send-button");
       const chatMessages = document.getElementById("chat-messages");
+
+      function displayMessage(data, isOld = false) {
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message ${
+          data.username === username ? "sent" : "received"
+        }`;
+
+        messageDiv.innerHTML = `
+          <div class="message-bubble">
+            <div class="message-content">${data.text}</div>
+            <div class="message-info">${data.username} • ${data.timestamp}</div>
+          </div>
+        `;
+
+        chatMessages.appendChild(messageDiv);
+
+        if (!isOld) {
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+          if (data.username !== username) {
+            showNotification(data.text, data.username);
+          }
+        }
+      }
 
       function sendMessage() {
         const message = messageInput.value.trim();
@@ -271,29 +320,14 @@
         }
       });
 
+      // Load old messages on page refresh
+      socket.on("loadMessages", (messages) => {
+        messages.forEach((msg) => displayMessage(msg, true));
+      });
+
+      // Receive new messages
       socket.on("message", (data) => {
-        const messageDiv = document.createElement("div");
-        messageDiv.className = `message ${
-          data.username === username ? "sent" : "received"
-        }`;
-
-        messageDiv.innerHTML = `
-                <div class="message-bubble">
-                    <div class="message-content">
-                        ${data.text}
-                    </div>
-                    <div class="message-info">
-                        ${data.username} • ${data.timestamp}
-                    </div>
-                </div>
-            `;
-
-        chatMessages.appendChild(messageDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-
-        if (data.username !== username) {
-          showNotification(data.text, data.username);
-        }
+        displayMessage(data);
       });
 
       document.addEventListener("visibilitychange", () => {
