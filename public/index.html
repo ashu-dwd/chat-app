@@ -197,6 +197,11 @@
           font-size: 14px; /* Reduce font size for better readability */
         }
       }
+      .typing-indicator {
+        font-size: 0.9rem;
+        color: #666;
+        margin-bottom: 10px;
+      }
     </style>
   </head>
   <body>
@@ -207,6 +212,9 @@
       </div>
       <div class="chat-messages" id="chat-messages">
         <!-- Messages will be inserted here -->
+      </div>
+      <div class="typing-indicator" id="typing-indicator" style="display: none">
+        Someone is typing...
       </div>
       <div class="input-area">
         <div class="input-container">
@@ -317,6 +325,13 @@
       messageInput.addEventListener("keypress", (e) => {
         if (e.key === "Enter") {
           sendMessage();
+        } else {
+          socket.emit("typing");
+        }
+      });
+      messageInput.addEventListener("keyup", (e) => {
+        if (e.key !== "Enter") {
+          socket.emit("stopTyping");
         }
       });
 
@@ -329,6 +344,16 @@
       socket.on("message", (data) => {
         displayMessage(data);
       });
+      // Show typing indicator
+      socket.on("typing", (username) => {
+        typingIndicator.textContent = `${username} is typing...`;
+        typingIndicator.style.display = "block";
+      });
+
+      // Hide typing indicator
+      socket.on("stopTyping", () => {
+        typingIndicator.style.display = "none";
+      });
 
       document.addEventListener("visibilitychange", () => {
         if (document.hidden) {
@@ -337,6 +362,27 @@
           console.log("Chat window restored");
         }
       });
+      // Handle deleting messages when the button is clicked
+      document
+        .getElementById("delete-messages-btn")
+        .addEventListener("click", () => {
+          if (confirm("Are you sure you want to delete all messages?")) {
+            fetch("/delete", {
+              method: "DELETE",
+            })
+              .then((response) => response.text())
+              .then((data) => {
+                console.log(data);
+                alert("Messages have been deleted.");
+                // Optionally, clear the chat window on the client side
+                document.getElementById("chat-messages").innerHTML = "";
+              })
+              .catch((error) => {
+                console.error("Error deleting messages:", error);
+                alert("An error occurred while deleting messages.");
+              });
+          }
+        });
     </script>
   </body>
 </html>

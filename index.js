@@ -71,6 +71,17 @@ io.on("connection", (socket) => {
     // Broadcast message to all connected clients
     io.emit("message", message);
   });
+  // Handle typing event
+  socket.on("typing", () => {
+    const username = users.get(socket.id);
+    socket.broadcast.emit("typing", username);
+  });
+
+  // Handle stop typing event
+  socket.on("stopTyping", () => {
+    const username = users.get(socket.id);
+    socket.broadcast.emit("stopTyping", username);
+  });
 
   // Handle disconnection
   socket.on("disconnect", () => {
@@ -82,6 +93,23 @@ io.on("connection", (socket) => {
 
 // Serve HTML file
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+
+// Handle delete request to remove the messages.json file
+app.delete('/delete', (req, res) => {
+  console.log('Received DELETE request to /delete');
+  const messagesFile = path.join(__dirname, "messages", "messages.json");
+
+  fs.unlink(messagesFile, (err) => {
+    if (err) {
+      console.error('Error deleting messages.json:', err);
+      return res.status(500).json({ message: 'Error deleting messages.json.' });
+    }
+
+    console.log('messages.json deleted successfully.');
+    res.send('messages.json deleted successfully.');
+  });
+});
+
 
 // Start server
 const PORT = process.env.PORT || 4000;
